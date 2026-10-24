@@ -141,32 +141,47 @@ for(let i=fires.length-1;i>=0;i--){
  halo.addColorStop(1,'rgba(255,91,16,0)');
  ctx.globalAlpha=intensity;
  ctx.fillStyle=halo;ctx.beginPath();ctx.arc(base[0],base[1],R*2.3,0,Math.PI*2);ctx.fill();
- // Coherent layered tongues of fire: deep-red silhouette, orange middle, yellow core.
+ // Translucent, softly blended tongues with a warm luminous center.
  const flameH=(55+R*.8)*intensity,flameW=Math.max(3,R*.85);
+ ctx.globalCompositeOperation='screen';
  for(let layer=0;layer<3;layer++){
-  const color=['#c9360b','#ff7910','#ffcc42'][layer];
-  const count=[9,8,6][layer];
-  const hfactor=[1,.77,.51][layer];
-  ctx.fillStyle=color;
-  ctx.globalAlpha=(.88-layer*.05)*intensity;
+  const count=[11,9,7][layer];
+  const hfactor=[1,.78,.56][layer];
   for(let k=0;k<count;k++){
-   let t=(k+.5)/count,offset=(t-.5)*flameW*1.9;
-   let sway=Math.sin(clock*4.3+k*1.72+layer)*flameW*.15;
-   let rise=(.58+.42*Math.abs(Math.sin(clock*3.5+k*2.17)))*flameH*hfactor;
-   let x=base[0]+offset, y=base[1]+Math.cos(k*2.4)*R*.1;
-   let width=Math.max(2,flameW/count*1.9)*(1-layer*.12);
+   const t=(k+.5)/count,offset=(t-.5)*flameW*1.9;
+   const sway=Math.sin(clock*3.7+k*1.72+layer)*flameW*.18;
+   const rise=(.56+.44*Math.abs(Math.sin(clock*2.9+k*2.17)))*flameH*hfactor;
+   const x=base[0]+offset,y=base[1]+Math.cos(k*2.4)*R*.1;
+   const width=Math.max(2,flameW/count*2.3)*(1-layer*.14);
+   const grad=ctx.createLinearGradient(x,y,x+sway,y-rise);
+   if(layer===0){
+    grad.addColorStop(0,'rgba(236,65,16,.43)');
+    grad.addColorStop(.58,'rgba(255,113,26,.36)');
+    grad.addColorStop(1,'rgba(255,153,55,0)');
+   }else if(layer===1){
+    grad.addColorStop(0,'rgba(255,127,21,.54)');
+    grad.addColorStop(.55,'rgba(255,178,55,.40)');
+    grad.addColorStop(1,'rgba(255,201,93,0)');
+   }else{
+    grad.addColorStop(0,'rgba(255,223,117,.57)');
+    grad.addColorStop(.58,'rgba(255,236,157,.39)');
+    grad.addColorStop(1,'rgba(255,247,192,0)');
+   }
+   ctx.globalAlpha=intensity*(.82+.12*Math.sin(clock*4+k));
+   ctx.fillStyle=grad;
    ctx.beginPath();ctx.moveTo(x-width,y);
-   ctx.bezierCurveTo(x-width*1.5,y-rise*.30,x+sway-width*.5,y-rise*.72,x+sway,y-rise);
-   ctx.bezierCurveTo(x+sway+width*.35,y-rise*.72,x+width*1.35,y-rise*.28,x+width,y);
+   ctx.bezierCurveTo(x-width*1.45,y-rise*.28,x+sway-width*.5,y-rise*.73,x+sway,y-rise);
+   ctx.bezierCurveTo(x+sway+width*.4,y-rise*.69,x+width*1.3,y-rise*.25,x+width,y);
    ctx.closePath();ctx.fill();
   }
  }
+ ctx.globalCompositeOperation='source-over';
  // Fine upward sparks.
  for(let k=0;k<16;k++){
   let t=(clock*(.4+(k%3)*.11)+k*.173)%1;
   let px=base[0]+Math.sin(k*5.3+clock*1.4)*flameW*.85;
   let py=base[1]-flameH*(.5+t*1.1);
-  ctx.globalAlpha=intensity*(1-t)*.85;
+  ctx.globalAlpha=intensity*(1-t)*.48;
   ctx.fillStyle=k%3===0?'#fff0a2':'#ff9b29';
   ctx.fillRect(px,py,Math.max(1,zoom*1.7),Math.max(2,zoom*3));
  }
@@ -178,7 +193,7 @@ for(let i=fires.length-1;i>=0;i--){
   let sx=base[0]+Math.sin(k*3.7+t*4)*flameW*.65+t*flameW*.65;
   let sy=base[1]-flameH*(.8+t*1.7);
   let rad=(9+t*22)*Math.max(.7,zoom)*intensity;
-  ctx.globalAlpha=(1-t)*.13*intensity;
+  ctx.globalAlpha=(1-t)*.09*intensity;
   ctx.fillStyle='#454b4c';
   ctx.beginPath();ctx.arc(sx,sy,rad,0,Math.PI*2);ctx.fill();
  }
@@ -190,10 +205,51 @@ if(flash>0){ctx.fillStyle=`rgba(255,194,102,${flash*.2})`;ctx.fillRect(0,0,W,H);
 function pointAt(sx,sy){let best=null,min=Infinity;for(let b of buildings){if(b.dead)continue;let q=project(b.x,b.h,b.z),d=Math.hypot(q[0]-sx,q[1]-sy);if(d<min){min=d;best=b}}if(best&&min<Math.max(25,Math.min(W,H)*.065))return [best.x,best.z];
 // inverse screen mapping on ground
 let a=project(0,0,0),p=project(1,0,0),q=project(0,0,1),dx=sx-a[0],dy=sy-a[1],ux=p[0]-a[0],uy=p[1]-a[1],vx=q[0]-a[0],vy=q[1]-a[1],det=ux*vy-uy*vx;return [(dx*vy-dy*vx)/det,(ux*dy-uy*dx)/det]}
-canvas.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY,lastX:e.clientX,lastY:e.clientY,moved:false};canvas.setPointerCapture(e.pointerId)});
-canvas.addEventListener('pointermove',e=>{if(!drag)return;let dx=e.clientX-drag.lastX,dy=e.clientY-drag.lastY;if(Math.hypot(e.clientX-drag.x,e.clientY-drag.y)>7)drag.moved=true;if(drag.moved){angle+=dx*.006;tilt=Math.max(.4,Math.min(1.3,tilt+dy*.003))}drag.lastX=e.clientX;drag.lastY=e.clientY});
-canvas.addEventListener('pointerup',e=>{if(drag&&!drag.moved)attack(...pointAt(e.clientX,e.clientY));drag=null});
-canvas.addEventListener('wheel',e=>{e.preventDefault();zoom=Math.max(.55,Math.min(2.4,zoom*Math.exp(-e.deltaY*.001)))},{passive:false});
+// Unified mouse and touch controls: one finger rotates, two fingers pinch to zoom.
+const activePointers=new Map();
+let pinchDistance=0, gestureUsed=false;
+function pointerDistance(){
+ const p=[...activePointers.values()];
+ return p.length<2?0:Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);
+}
+canvas.addEventListener('pointerdown',e=>{
+ e.preventDefault();
+ activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+ try{canvas.setPointerCapture(e.pointerId)}catch(_){}
+ if(activePointers.size===1){drag={x:e.clientX,y:e.clientY,lastX:e.clientX,lastY:e.clientY,moved:false};gestureUsed=false}
+ else{pinchDistance=pointerDistance();gestureUsed=true;if(drag)drag.moved=true}
+});
+canvas.addEventListener('pointermove',e=>{
+ if(!activePointers.has(e.pointerId))return;
+ e.preventDefault();
+ activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+ if(activePointers.size>=2){
+  const next=pointerDistance();
+  if(pinchDistance>0&&next>0)zoom=Math.max(.55,Math.min(3.5,zoom*next/pinchDistance));
+  pinchDistance=next;gestureUsed=true;
+  return;
+ }
+ if(!drag||gestureUsed)return;
+ const dx=e.clientX-drag.lastX,dy=e.clientY-drag.lastY;
+ if(Math.hypot(e.clientX-drag.x,e.clientY-drag.y)>7)drag.moved=true;
+ if(drag.moved){angle+=dx*.006;tilt=Math.max(.4,Math.min(1.3,tilt+dy*.003))}
+ drag.lastX=e.clientX;drag.lastY=e.clientY;
+});
+function finishPointer(e,cancelled){
+ if(!activePointers.has(e.pointerId))return;
+ const wasSingle=activePointers.size===1;
+ activePointers.delete(e.pointerId);
+ if(wasSingle&&!cancelled&&!gestureUsed&&drag&&!drag.moved)attack(...pointAt(e.clientX,e.clientY));
+ if(activePointers.size===0){drag=null;pinchDistance=0;gestureUsed=false}
+ else{gestureUsed=true;pinchDistance=pointerDistance();drag=null}
+}
+canvas.addEventListener('pointerup',e=>finishPointer(e,false));
+canvas.addEventListener('pointercancel',e=>finishPointer(e,true));
+canvas.addEventListener('lostpointercapture',e=>finishPointer(e,true));
+canvas.addEventListener('wheel',e=>{
+ e.preventDefault();
+ zoom=Math.max(.55,Math.min(3.5,zoom*Math.exp(-e.deltaY*.001)));
+},{passive:false});
 document.querySelectorAll('[data-w]').forEach(b=>b.onclick=()=>{weapon=b.dataset.w;document.querySelectorAll('[data-w]').forEach(v=>v.classList.toggle('active',v===b))});
 document.getElementById('reset').onclick=reset;
 </script></html>
